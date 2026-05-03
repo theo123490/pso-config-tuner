@@ -1,0 +1,47 @@
+# Project-specific
+CLAUDE.md
+docs/
+.claude/
+
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+/bin/
+/dist/
+
+# Build output
+*.o
+*.a
+*.test
+
+# Go workspace
+go.work
+go.work.sum
+
+# Dependency cache
+/vendor/
+
+# Test artifacts
+coverage.out
+coverage.html
+*.prof
+
+# Environment / secrets
+.env
+.env.*
+*.pem
+*.key
+
+# Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
