@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: swarm-config
+  namespace: pso-system
+data:
+  swarm.yaml: |
+    swarm:
+      cluster_id: my-swarm-001
+      size: 10
+      max_iter: 100
+      observation_window: 30s
+      fitness_calculator_url: http://fitness-calc:9000
+      report_timeout: 5s
+      max_skip_iterations: 3
+      eviction_after_iterations: -1
+      max_report_failures: 5
+      new_particle_seed: client
+
+    pso:
+      inertia: 0.729
+      cognitive: 1.49445
+      social: 1.49445
+    space:
+      - name: worker_pool_size
+        type: int
+        min: 1
+        max: 64
+        default: 8
+      - name: queue_depth
+        type: int
+        min: 10
+        max: 10000
+        default: 500
+      - name: timeout_ms
+        type: float
+        min: 50.0
+        max: 5000.0
+        default: 1000.0

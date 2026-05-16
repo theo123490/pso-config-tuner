@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pso-client
+  namespace: pso-system
+spec:
+  replicas: 10
+  selector:
+    matchLabels:
+      app: pso-client
+  template:
+    metadata:
+      labels:
+        app: pso-client
+    spec:
+      containers:
+        - name: client
+          image: pso-client:latest
+          env:
+            - name: CONTROLLER_URL
+              value: "http://controller:8080"
+            - name: PARTICLE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi

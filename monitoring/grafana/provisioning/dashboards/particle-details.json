@@ -1,0 +1,176 @@
+{
+  "title": "Ackley - Particle Detail",
+  "uid": "pso-particle-details",
+  "schemaVersion": 38,
+  "refresh": "5s",
+  "time": { "from": "now-5m", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "particle",
+        "label": "Particle",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": {
+          "query": "label_values(pso_particle_fitness, particle_id)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "sort": 1,
+        "multi": false,
+        "includeAll": false,
+        "current": {}
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Iteration",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 0, "w": 4, "h": 4 },
+      "targets": [
+        { "expr": "pso_iteration", "legendFormat": "iteration", "refId": "A" }
+      ],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 2,
+      "title": "gBest Fitness",
+      "type": "stat",
+      "gridPos": { "x": 4, "y": 0, "w": 5, "h": 4 },
+      "targets": [
+        { "expr": "pso_gbest_fitness", "legendFormat": "gBest", "refId": "A" }
+      ],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 3,
+      "title": "Particle Fitness",
+      "type": "stat",
+      "gridPos": { "x": 9, "y": 0, "w": 5, "h": 4 },
+      "targets": [
+        {
+          "expr": "pso_particle_fitness{particle_id=\"$particle\"}",
+          "legendFormat": "fitness",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 4,
+      "title": "x1 (current)",
+      "type": "stat",
+      "gridPos": { "x": 14, "y": 0, "w": 5, "h": 4 },
+      "targets": [
+        {
+          "expr": "pso_particle_position{particle_id=\"$particle\", variable=\"x1\"}",
+          "legendFormat": "x1",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "fieldConfig": { "defaults": { "decimals": 4 } }
+    },
+    {
+      "id": 5,
+      "title": "x2 (current)",
+      "type": "stat",
+      "gridPos": { "x": 19, "y": 0, "w": 5, "h": 4 },
+      "targets": [
+        {
+          "expr": "pso_particle_position{particle_id=\"$particle\", variable=\"x2\"}",
+          "legendFormat": "x2",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "fieldConfig": { "defaults": { "decimals": 4 } }
+    },
+    {
+      "id": 6,
+      "title": "Position (x1, x2)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "pso_particle_position{particle_id=\"$particle\"}",
+          "legendFormat": "{{variable}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "custom": { "lineWidth": 2 }, "decimals": 4 }
+      }
+    },
+    {
+      "id": 7,
+      "title": "Fitness",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "pso_particle_fitness{particle_id=\"$particle\"}",
+          "legendFormat": "fitness",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "custom": { "lineWidth": 2 }, "decimals": 4 }
+      }
+    },
+    {
+      "id": 8,
+      "title": "Velocity (x1, x2)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "pso_particle_velocity{particle_id=\"$particle\"}",
+          "legendFormat": "{{variable}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "custom": { "lineWidth": 2 }, "decimals": 4 }
+      }
+    },
+    {
+      "id": 9,
+      "title": "Personal Best (x1, x2)",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 12, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "pso_particle_pbest{particle_id=\"$particle\"}",
+          "legendFormat": "{{variable}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "custom": { "lineWidth": 2 }, "decimals": 4 }
+      }
+    }
+  ]
+}

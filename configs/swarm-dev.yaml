@@ -1,0 +1,27 @@
+swarm:
+  cluster_id: dev-swarm
+  size: 5
+  max_iter: -1
+  observation_window: 3s
+  fitness_calculator_url: http://fitness-calc:9000
+  report_timeout: 15s
+  max_skip_iterations: 5
+  eviction_after_iterations: -1
+  max_report_failures: 5
+  new_particle_seed: random
+
+pso:
+  inertia: 0.729
+  cognitive: 1.49445
+  social: 1.49445
+space:
+  - name: x1
+    type: float
+    min: -10.0
+    max: 10.0
+    default: 2.5
+  - name: x2
+    type: float
+    min: -10.0
+    max: 10.0
+    default: 2.5

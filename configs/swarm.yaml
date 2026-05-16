@@ -14,9 +14,6 @@ pso:
   inertia: 0.729
   cognitive: 1.49445
   social: 1.49445
-  convergence_threshold: 1e-4
-  convergence_patience: 10
-
 space:
   - name: worker_pool_size
     type: int

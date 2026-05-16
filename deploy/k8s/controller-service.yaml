@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: controller
+  namespace: pso-system
+spec:
+  selector:
+    app: controller
+  ports:
+    - port: 8080
+      targetPort: 8080

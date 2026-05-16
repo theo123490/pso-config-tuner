@@ -1,5 +1,5 @@
-// Example Go client (particle). Registers with the Controller, then runs the
-// iteration loop: pull config → apply → observe → report.
+// Example Go client (particle). Dummy implementation: registers, pulls config each
+// iteration, sleeps for observation_window, then echoes the received config back as metrics.
 package main
 
 import (
@@ -12,12 +12,11 @@ import (
 	"time"
 )
 
-const controllerURL = "http://localhost:8080"
-
 type registerReq struct {
-	ID             string   `json:"id"`
-	HealthcheckURL string   `json:"healthcheck_url"`
-	ConfigKeys     []string `json:"config_keys"`
+	ID             string             `json:"id"`
+	HealthcheckURL string             `json:"healthcheck_url"`
+	ConfigKeys     []string           `json:"config_keys"`
+	Defaults       map[string]float64 `json:"defaults"`
 }
 
 type configResp struct {
@@ -31,59 +30,80 @@ type reportReq struct {
 	Metrics   map[string]interface{} `json:"metrics"`
 }
 
+var configKeys = []string{"x1", "x2"}
+
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
 
 	id := envOr("PARTICLE_ID", "client-0")
+	controllerURL := envOr("CONTROLLER_URL", "http://localhost:8080")
 
-	// Register
+	defaults := map[string]float64{"x1": 2.5, "x2": 2.5}
+
 	reg := registerReq{
 		ID:             id,
-		HealthcheckURL: fmt.Sprintf("http://%s:9090/health", id),
-		ConfigKeys:     []string{"worker_pool_size", "queue_depth", "timeout_ms"},
+		HealthcheckURL: "",
+		ConfigKeys:     configKeys,
+		Defaults:       defaults,
 	}
-	post(controllerURL+"/register", reg)
-	slog.Info("registered", "particle_id", id)
+
+	// retry registration until controller is ready
+	for {
+		if err := postJSON(controllerURL+"/register", reg); err != nil {
+			slog.Warn("register failed, retrying", "particle_id", id, "err", err)
+			time.Sleep(2 * time.Second)
+			continue
+		}
+		slog.Info("registered", "particle_id", id)
+		break
+	}
 
 	for {
-		// Pull config
 		resp, err := http.Get(fmt.Sprintf("%s/config/%s", controllerURL, id))
 		if err != nil {
-			slog.Error("config fetch failed", "err", err)
-			time.Sleep(5 * time.Second)
+			slog.Warn("config fetch failed", "particle_id", id, "err", err)
+			time.Sleep(2 * time.Second)
 			continue
 		}
 		var cfg configResp
 		json.NewDecoder(resp.Body).Decode(&cfg)
 		resp.Body.Close()
 
-		slog.Info("got config", "iteration", cfg.Iteration, "config", cfg.Config)
+		slog.Info("got config", "particle_id", id, "iteration", cfg.Iteration, "config", cfg.Config)
 
-		// Apply config and observe (placeholder — replace with real workload)
 		window, _ := time.ParseDuration(cfg.ObservationWindow)
 		if window == 0 {
-			window = 30 * time.Second
+			window = 5 * time.Second
 		}
 		time.Sleep(window)
 
-		// Report metrics (placeholder values)
-		report := reportReq{
-			Iteration: cfg.Iteration,
-			Metrics: map[string]interface{}{
-				"p99_latency_ms": 120.0,
-				"throughput_rps": 5000,
-				"error_rate":     0.001,
-			},
+		// dummy: echo config values back as metrics
+		metrics := make(map[string]interface{}, len(cfg.Config))
+		for k, v := range cfg.Config {
+			metrics[k] = v
 		}
-		post(fmt.Sprintf("%s/report/%s", controllerURL, id), report)
-		slog.Info("reported metrics", "iteration", cfg.Iteration)
+
+		report := reportReq{Iteration: cfg.Iteration, Metrics: metrics}
+		if err := postJSON(fmt.Sprintf("%s/report/%s", controllerURL, id), report); err != nil {
+			slog.Warn("report failed", "particle_id", id, "iteration", cfg.Iteration, "err", err)
+		} else {
+			slog.Info("reported metrics", "particle_id", id, "iteration", cfg.Iteration)
+		}
 	}
 }
 
-func post(url string, body interface{}) {
-	b, _ := json.Marshal(body)
-	http.Post(url, "application/json", bytes.NewReader(b)) //nolint:errcheck
+func postJSON(url string, body interface{}) error {
+	b, err := json.Marshal(body)
+	if err != nil {
+		return err
+	}
+	resp, err := http.Post(url, "application/json", bytes.NewReader(b))
+	if err != nil {
+		return err
+	}
+	resp.Body.Close()
+	return nil
 }
 
 func envOr(key, fallback string) string {

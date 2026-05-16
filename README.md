@@ -34,45 +34,91 @@ Automatic microservice configuration tuner using Particle Swarm Optimization (PS
 3. Clients register with the Controller on startup.
 4. Each iteration: clients pull a new config, apply it, observe for a window, report metrics.
 5. Controller calls the Fitness Calculator, updates pBest/gBest, computes new positions via PSO.
-6. Repeat until convergence or `max_iter`. Read optimal config from `GET /status`.
+6. Repeat until `max_iter` is reached (`-1` = runs indefinitely). Read optimal config from `GET /status`.
 
 **Fitness convention: higher score = better.** Negate if you want to minimize latency.
 
-## Quick start
+## Quick start (local)
 
 ```bash
 # Edit the search space and PSO settings
 vim configs/swarm.yaml
 
-# Start controller + Redis via Docker Compose
-make up
+# Start the full local dev stack (builds all images, runs in background)
+make docker/up
 
-# Check swarm status
+# Check swarm status — iteration should advance past 1 within ~10s
 curl http://localhost:8080/status
+
+# Grafana dashboard
+open http://localhost:3000   # Dashboards > PSO Swarm
+
+# Stop everything
+make docker/down
 ```
 
 ## Local development
 
+`make docker/up` starts the full local stack using `docker-compose.yml`:
+
+| Service | Port | Notes |
+|---------|------|-------|
+| controller | 8080 | REST API |
+| redis | 6380 | Host port 6380 (avoids conflict with system Redis on 6379) |
+| fitness-calc | 9000 | Ackley function scorer; `/render` serves interactive 3D plot |
+| client-0 … client-4 | — | 5 example Go clients as particles |
+| prometheus | 9090 | Scrapes controller every 5s |
+| grafana | 3000 | Anonymous admin; pre-provisioned PSO Swarm + Ackley Particle Detail dashboards |
+
 | Command | Description |
 |---------|-------------|
-| `make build` | Compile binary to `bin/controller` |
-| `make run` | Build and run the controller locally |
-| `make up` | Start controller + Redis with Docker Compose |
-| `make down` | Stop Docker Compose services |
-| `make logs` | Tail controller logs |
+| `make docker/up` | Build and start the full local dev stack (detached) |
+| `make docker/down` | Stop and remove all containers |
+| `make docker/logs` | Tail controller logs |
+| `make docker/restart-simulation` | Flush Redis + rebuild/restart controller, fitness-calc, all clients |
+| `make docker/restart-fitness` | Rebuild/restart fitness-calc only (no Redis flush) |
+| `make build` | Compile binary to `bin/controller` (requires Go 1.23+) |
 | `make test` | Run all tests |
 | `make lint` | Run `go vet` |
 | `make tidy` | Run `go mod tidy` |
 
+**Note:** `go.mod` requires Go 1.23. If your local Go is older, use `make docker/up` — the dev stack builds via `golang:1.23-alpine` inside Docker.
+
+If a run gets stuck (particles stuck inactive from a previous bad run):
+
+```bash
+make docker/restart-simulation
+```
+
 The controller listens on `:8080` by default. Override with `CONTROLLER_ADDR` env var.
+
+## Production deployment
+
+Production is deployed on **Kubernetes**, not Docker Compose. Manifests are in `deploy/k8s/`:
+
+| Manifest | Description |
+|----------|-------------|
+| `namespace.yaml` | `pso-tuner` namespace |
+| `configmap.yaml` | `swarm.yaml` as a ConfigMap |
+| `redis.yaml` | Redis Deployment + Service |
+| `controller-deployment.yaml` | Controller Deployment + readiness probe |
+| `controller-service.yaml` | Controller Service |
+| `fitness-deployment.yaml` | Fitness Calculator Deployment + Service |
+| `client-deployment.yaml` | Client Deployment (N replicas; `PARTICLE_ID` from pod name) |
+
+```bash
+kubectl apply -f deploy/k8s/
+```
+
+Docker Compose is not used in production.
 
 ## Configuration (`swarm.yaml`)
 
 ```yaml
 swarm:
   cluster_id: my-swarm-001        # used as auth token during registration
-  size: 10                         # number of particles
-  max_iter: 100
+  size: 5                          # number of particles
+  max_iter: -1                     # -1 = run indefinitely
   observation_window: 30s          # sent to clients via /config response
   fitness_calculator_url: http://fitness-calc:9000
   report_timeout: 5s
@@ -85,25 +131,18 @@ pso:
   inertia: 0.729
   cognitive: 1.49445
   social: 1.49445
-  convergence_threshold: 1e-4
-  convergence_patience: 10
 
 space:
-  - name: worker_pool_size
-    type: int
-    min: 1
-    max: 64
-    default: 8
-  - name: queue_depth
-    type: int
-    min: worker_pool_size          # cross-parameter bound reference
-    max: 10000
-    default: 500
-  - name: timeout_ms
+  - name: x1
     type: float
-    min: 50.0
-    max: 5000.0
-    default: 1000.0
+    min: -10.0
+    max: 10.0
+    default: 2.5
+  - name: x2
+    type: float
+    min: -10.0
+    max: 10.0
+    default: 2.5
 ```
 
 ## REST API
@@ -128,6 +167,13 @@ POST /fitness
 ```
 
 Implement this endpoint in any language and point `fitness_calculator_url` at it.
+
+The example Python FC (`examples/fitness-python`) implements the 2D Ackley function and also exposes:
+
+```
+GET /render              — interactive 3D surface plot of the Ackley function
+GET /render?x1=0&x2=0   — same plot with a query point marked
+```
 
 ## Project structure
 
