@@ -6,13 +6,13 @@ services:
 
   controller:
     build:
-      context: .
+      context: ../..
     ports:
       - "8080:8080"
     environment:
       - CONTROLLER_ADDR=:8080
       - REDIS_ADDR=redis:6379
-      - CONFIG_PATH=/app/configs/swarm-dev.yaml
+      - CONFIG_PATH=/app/configs/swarm.yaml
     volumes:
       - ./configs:/app/configs
     depends_on:
@@ -20,13 +20,13 @@ services:
 
   fitness-calc:
     build:
-      context: ./examples/fitness-python
+      context: ./fitness
     ports:
       - "9000:9000"
 
   client-0:
     build:
-      context: .
+      context: ../..
       dockerfile: examples/client-go/Dockerfile
     environment:
       - CONTROLLER_URL=http://controller:8080
@@ -36,7 +36,7 @@ services:
 
   client-1:
     build:
-      context: .
+      context: ../..
       dockerfile: examples/client-go/Dockerfile
     environment:
       - CONTROLLER_URL=http://controller:8080
@@ -46,7 +46,7 @@ services:
 
   client-2:
     build:
-      context: .
+      context: ../..
       dockerfile: examples/client-go/Dockerfile
     environment:
       - CONTROLLER_URL=http://controller:8080
@@ -56,7 +56,7 @@ services:
 
   client-3:
     build:
-      context: .
+      context: ../..
       dockerfile: examples/client-go/Dockerfile
     environment:
       - CONTROLLER_URL=http://controller:8080
@@ -66,35 +66,10 @@ services:
 
   client-4:
     build:
-      context: .
+      context: ../..
       dockerfile: examples/client-go/Dockerfile
     environment:
       - CONTROLLER_URL=http://controller:8080
       - PARTICLE_ID=client-4
     depends_on:
       - controller
-
-  prometheus:
-    image: prom/prometheus:latest
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    command:
-      - --config.file=/etc/prometheus/prometheus.yml
-      - --storage.tsdb.path=/prometheus
-    depends_on:
-      - controller
-
-  grafana:
-    image: grafana/grafana:latest
-    ports:
-      - "3000:3000"
-    environment:
-      - GF_AUTH_ANONYMOUS_ENABLED=true
-      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
-      - GF_AUTH_DISABLE_LOGIN_FORM=true
-    volumes:
-      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
-    depends_on:
-      - prometheus

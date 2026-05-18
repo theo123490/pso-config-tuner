@@ -41,50 +41,82 @@ Automatic microservice configuration tuner using Particle Swarm Optimization (PS
 ## Quick start (local)
 
 ```bash
-# Edit the search space and PSO settings
-vim configs/swarm.yaml
-
-# Start the full local dev stack (builds all images, runs in background)
+# Start the Ackley simulation
+cd simulations/ackley
 make docker/up
 
-# Check swarm status — iteration should advance past 1 within ~10s
+# Check swarm status — iteration should advance within ~10s
 curl http://localhost:8080/status
 
-# Grafana dashboard
-open http://localhost:3000   # Dashboards > PSO Swarm
+# Grafana dashboards
+open http://localhost:3000
 
-# Stop everything
+# Stop
 make docker/down
 ```
 
-## Local development
+To run a different simulation, `cd` into its directory:
 
-`make docker/up` starts the full local stack using `docker-compose.yml`:
+```bash
+cd simulations/kafka-consumer
+make docker/up
+make docker/down
+```
+
+## Simulations
+
+Each simulation lives in `simulations/<name>/` and is self-contained:
+
+```
+simulations/
+├── ackley/               # 2D Ackley function benchmark (active)
+│   ├── docker-compose.yml
+│   ├── configs/swarm.yaml
+│   ├── fitness/          # Python Ackley fitness calculator
+│   └── monitoring/       # Prometheus + Grafana provisioning
+└── kafka-consumer/       # Kafka consumer config tuning (skeleton — not started)
+    ├── docker-compose.yml
+    ├── configs/swarm.yaml
+    └── fitness/          # stub fitness calculator
+```
+
+The Go controller and client (`examples/client-go/`) are shared across all simulations.
+
+### Ackley services
 
 | Service | Port | Notes |
 |---------|------|-------|
 | controller | 8080 | REST API |
 | redis | 6380 | Host port 6380 (avoids conflict with system Redis on 6379) |
 | fitness-calc | 9000 | Ackley function scorer; `/render` serves interactive 3D plot |
-| client-0 … client-4 | — | 5 example Go clients as particles |
+| client-0 … client-4 | — | 5 Go clients as particles |
 | prometheus | 9090 | Scrapes controller every 5s |
-| grafana | 3000 | Anonymous admin; pre-provisioned PSO Swarm + Ackley Particle Detail dashboards |
+| grafana | 3000 | Anonymous admin; PSO Swarm + Ackley Particle Detail dashboards |
+
+### Makefile targets
+
+Run from the simulation directory (`cd simulations/ackley`):
 
 | Command | Description |
 |---------|-------------|
-| `make docker/up` | Build and start the full local dev stack (detached) |
-| `make docker/down` | Stop and remove all containers |
+| `make docker/up` | Build and start simulation stack (detached) |
+| `make docker/down` | Stop and remove simulation containers |
 | `make docker/logs` | Tail controller logs |
 | `make docker/restart-simulation` | Flush Redis + rebuild/restart controller, fitness-calc, all clients |
 | `make docker/restart-fitness` | Rebuild/restart fitness-calc only (no Redis flush) |
-| `make build` | Compile binary to `bin/controller` (requires Go 1.23+) |
+
+Run from the repo root:
+
+| Command | Description |
+|---------|-------------|
+| `make build` | Compile controller binary (requires Go 1.23+) |
 | `make test` | Run all tests |
 | `make lint` | Run `go vet` |
 | `make tidy` | Run `go mod tidy` |
 
-**Note:** `go.mod` requires Go 1.23. If your local Go is older, use `make docker/up` — the dev stack builds via `golang:1.23-alpine` inside Docker.
+**Note:** `go.mod` requires Go 1.23. Build always via Docker — the dev stack uses `golang:1.23-alpine`.
 
-If a run gets stuck (particles stuck inactive from a previous bad run):
+If a run gets stuck, flush Redis:
 
 ```bash
 make docker/restart-simulation
